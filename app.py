@@ -8,7 +8,7 @@ import os
 app = Flask(__name__, static_folder='/var/www/mishland.ru')
 login_manager = LoginManager()
 login_manager.init_app(app)
-app.secret_key = 'bomb'
+app.secret_key = 'think_a_little'
 
 
 def create_table():
@@ -25,22 +25,22 @@ class User:
         self.password_hash = password_hash
         self.account_type = account_type
 
-    # Flask-Login требует этих четырех методов
+    
 
     def is_authenticated(self):
-        # Предполагается, что пользователь всегда аутентифицирован
+        
         return True
 
     def is_active(self):
-        # Предполагается, что пользователь всегда активен
+     
         return True
 
     def is_anonymous(self):
-        # Реальные пользователи не являются анонимными
+        
         return False
 
     def get_id(self):
-        # Возвращает уникальный идентификатор пользователя в виде строки (в данном случае - это id)
+        
         return str(self.id)
 
 
