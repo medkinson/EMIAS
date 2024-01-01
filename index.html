@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>    
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>ЕМИАС</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+        }
+        .content {
+            margin-top: 20px;
+        }
+	
+	#mishland {
+	    border-bottom: 10px groove #1a5fb4;
+	    text-align: left;
+	}
+
+	.stapp {
+	box-shadow: 0px 1px 0px 0px #f0f7fa;
+	background:linear-gradient(to bottom, #33bdef 5%, #019ad2 100%);
+	background-color:#33bdef;
+	border-radius:6px;
+	border:1px solid #057fd0;
+	display:inline-block;
+	cursor:pointer;
+	color:#ffffff;
+	font-family:Verdana;
+	font-size:15px;
+	font-weight:bold;
+	padding:6px 5px;
+	text-decoration:none;
+	text-shadow:0px -1px 0px #5b6178;
+		}
+	.stapp:hover {
+	background:linear-gradient(to bottom, #019ad2 5%, #33bdef 100%);
+	background-color:#019ad2;
+		}
+	.stapp:active {
+	position:relative;
+	top:1px;
+		}
+
+	.loginbtn {
+	margin-right: 20%;
+		}
+
+	.regbtn {
+	margin-right: 25%;
+		}
+
+        #menu {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        #menuContent {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+        }
+        #closeButton {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            cursor: pointer;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                width: 100%;
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+            #menuContent {
+                width: 90%;
+            }
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="mishland">Единая медицинская информационно-аналитическая система Мишляндии и Зверюшии</h1>
+            <h1>Добро пожаловать на ЕМИАС!</h1>
+	    <p id="usernameDisplay"></p>
+        </div>
+        <div class="content">
+	    <button id="viewRecordsButton" style="display:none;">Посмотреть записи</button>
+	    <div id="appointments"></div>		
+            <p id="welcomeMessage"></p>
+	    <p id="wmUnlogged"><strong>Здесь вы можете записаться на прием к врачу. Пожалуйста, выберите специализацию и удобное для вас время.</strong></p>
+	    <button id="logoutButton" style="display:none;">Выйти из аккаунта</button>
+            <button id="startButton" class="stapp">Начать запись</button>
+            <button id="loginButton" class="loginbtn">Войти в аккаунт</button>
+            <button id="registerButton" class="regbtn">Зарегистрироваться</button>
+	    <div id="appointmentsContainer"></div>
+        </div>
+    </div>
+    </div>
+
+    <div id="menu">
+        <div id="menuContent">
+            <span id="closeButton">X</span>
+            <ol>
+                <li>Выберите специализацию
+                    <select id="specialization">
+                        <option value="urology">Урология</option>
+                        <option value="moleMedicine">Кротовая медицина</option>
+                        <option value="bearMedicine">Медвежья медицина</option>
+                    </select>
+                </li>
+                <li>Выберите время
+                    <select id="time">
+                        <!-- Время будет добавлено динамически -->
+                    </select>
+                </li>
+                <li>Выберите врача
+                    <select id="doctor">
+                        <!-- Врачи будут добавлены динамически -->
+                    </select>
+                </li>
+                <!-- Добавлено поле для ввода имени -->
+                <li>Введите ваше имя
+                    <input type="text" id="name" placeholder="Ваше имя">
+                </li>
+                <li><button id="submitAppointment">Записаться на прием</button></li>
+            </ol>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    $(document).ready(function() {
+        var doctors = {
+    'urology': [{'name': 'Кроташкин Эрменрих', 'id': 1}],
+    'moleMedicine': [{'name': 'Кроташкин Боташа', 'id': 3}, {'name': 'Кроташкин Эрменрих', 'id': 1}],
+    'bearMedicine': [{'name': 'Медвежкин Умка', 'id': 2}]
+};
+
+         var specializationNames = {
+    'urology': 'Урология',
+    'moleMedicine': 'Кротовая медицина',
+    'bearMedicine': 'Медвежья медицина'
+};
+
+var times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+
+var bookedTimes = {
+    '1': [],
+    '2': [],
+    '3': []
+};
+
+
+$('#specialization').change(function() {
+    var specialization = $(this).val();
+    var doctorSelect = $('#doctor');
+    doctorSelect.empty();
+    doctors[specialization].forEach(function(doctor) {
+        // Теперь добавляем только имя врача
+        doctorSelect.append($('<option></option>').val(doctor.id).text(doctor.name));
+    });
+});
+
+
+        times.forEach(function(time) {
+            $('#time').append($('<option></option>').val(time).text(time));
+        });
+
+
+
+        $('#startButton').click(function() {
+            $('#menu').show();
+        });
+
+        $('#closeButton').click(function() {
+            $('#menu').hide();
+        });
+
+        $('#loginButton').click(function() {
+    var username = prompt("Введите ваше имя пользователя:");
+    var password = prompt("Введите ваш пароль:");
+    
+    $.ajax({
+        url: '/login',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            username: username,
+            password: password
+        }),
+        success: function(response) {
+            alert(response.message);
+            if (response.message === 'Вход выполнен успешно') {
+                $('#loginButton').hide();
+                $('#registerButton').hide();
+		$('#wmUnlogged').hide();
+                $('#usernameDisplay').text('Вход выполнен | ' + username);
+                if (response.account_type === 'ВРАЧ') {
+                    $('#welcomeMessage').text('Здесь вы можете управлять приёмами пользователей и составлять протокол осмотра.');
+                    $('#viewRecordsButton').show();
+                } else {
+                    $('#welcomeMessage').text('Здесь вы можете записаться на прием к врачу. Пожалуйста, выберите специализацию и удобное для вас время.');
+                }
+            }
+        }
+    });
+});
+
+// Проверяем, есть ли куки при загрузке страницы
+$(document).ready(function() {
+    var username = $.cookie('username');
+    if (username) {
+        $('#loginButton').hide();
+        $('#registerButton').hide();
+        $('#usernameDisplay').text('Вход выполнен | ' + username);
+    }
+});
+
+       $('#registerButton').click(function() {
+    var username = prompt("Введите ваше имя пользователя:");
+    var password = prompt("Введите ваш пароль:");
+    
+    $.ajax({
+        url: '/register',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            username: username,
+            password: password,
+            account_type: 'ПАЦИЕНТ'
+        }),
+        success: function(response) {
+            alert(response.message);
+        }
+    });
+});
+
+	   $('#viewAppointmentsButton').click(function() {
+    var usernameDisplay = $('#usernameDisplay').text();
+    var username = usernameDisplay.split('|')[1].trim();
+
+    $.ajax({
+        url: '/get_appointments',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            username: username
+        }),
+        success: function(response) {
+            $('#appointments').empty();
+            response.appointments.forEach(function(appointment) {
+                $('#appointments').append('<p>' + appointment + '</p>');
+            });
+        }
+    });
+});
+
+            $('#viewRecordsButton').click(function() {
+    // Проверяем, вошел ли пользователь в систему
+    var usernameDisplay = $('#usernameDisplay').text();
+    var isLoggedIn = usernameDisplay && usernameDisplay.includes('Вход выполнен');
+    
+    // Если пользователь вошел в систему, извлекаем его имя пользователя
+    var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
+    
+    $.ajax({
+        url: '/view_appointments',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            username: username
+        }),
+        success: function(response) {
+            // Очищаем контейнер записей
+            $('#appointmentsContainer').empty();
+
+            // Создаем объект, который связывает кодовые обозначения специализаций и буквенные названия
+            var specializationNames = {
+                'urology': 'Урология',
+                'moleMedicine': 'Кротовая медицина',
+                'bearMedicine': 'Медвежья медицина'
+            };
+
+            // Добавляем каждую запись на прием в контейнер
+            response.appointments.forEach(function(appointment) {
+                // Используем объект specializationNames для получения буквенного названия специализации
+                var specializationName = specializationNames[appointment.specialization];
+                var appointmentElement = $('<div></div>').text(`Имя: ${appointment.name}, Специализация: ${specializationName}, Время: ${appointment.time}`);
+                var finishButton = $('<button>Завершить прием</button>').click(function() {
+                    $.ajax({
+                        url: '/finish_appointment',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            appointment_id: appointment.id
+                        }),
+                        success: function(response) {
+                            alert(response.message);
+                            appointmentElement.remove();
+                        }
+                    });
+                });
+                appointmentElement.append(finishButton);
+                $('#appointmentsContainer').append(appointmentElement);
+            });
+        }
+    });
+});
+
+	    $("#appointmentForm").submit(function(event) {
+		event.preventDefault();
+		var name = $("#name").val(); // Получаем имя из формы записи на прием
+		$.ajax({
+		    url: '/register_appointment', // URL, куда отправляется запрос
+		    type: 'post',
+		    data: {
+		        name: name // Отправляем имя вместе с запросом
+		    },
+		    success: function(response) {
+		        alert(response.message);
+		    }
+		});
+	    });
+
+
+
+       $('#submitAppointment').click(function() {
+    var selectedTime = $('#time').val();  // Get the selected time
+    var selectedDoctor = $('#doctor').val();  // Get the selected doctor
+    var name = $('#name').val();  // Get the name
+    var specialization = $('#specialization').val();  // Get the specialization
+
+    // Проверяем, вошел ли пользователь в систему
+    var usernameDisplay = $('#usernameDisplay').text();
+    var isLoggedIn = usernameDisplay && usernameDisplay.includes('Вход выполнен');
+    
+    // Если пользователь вошел в систему, извлекаем его имя пользователя
+    var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
+    
+    // Make the POST request to the server
+    $.ajax({
+        url: '/appointment',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            'name': name,
+            'specialization': specialization,
+            'time': selectedTime,
+            'doctor_id': selectedDoctor
+        }),
+        success: function(response) {
+            alert(response.message);
+            // Remove the selected time from the list
+            $('#time option:selected').remove();
+            // Add the selected time to the list of booked times for the selected doctor
+            bookedTimes[selectedDoctor].push(selectedTime);
+        },
+        error: function(response) {
+            alert(response.responseJSON.message);
+        }
+    });
+});
+
+
+   });
+   </script>
+
+</body>
+</html>
+
