@@ -15,7 +15,7 @@ def create_table():
     with sqlite3.connect('database.db') as conn:
        c = conn.cursor()
        c.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, account_type TEXT CHECK(account_type IN ("ВРАЧ", "ПАЦИЕНТ")));')
-       c.execute('CREATE TABLE IF NOT EXISTS appointments (name TEXT, specialization TEXT, time TEXT, doctor TEXT, username TEXT DEFAULT "NA", id INTEGER, doctor_id INTEGER, FOREIGN KEY(id) REFERENCES users(id), FOREIGN KEY(doctor_id) REFERENCES users(id))')  # добавлен столбец status
+       c.execute('CREATE TABLE IF NOT EXISTS appointments (name TEXT, specialization TEXT, time TEXT, doctor TEXT, username TEXT DEFAULT "NA", id INTEGER, doctor_id INTEGER, FOREIGN KEY(id) REFERENCES users(id), FOREIGN KEY(doctor_id) REFERENCES users(id))')  
 
 
 class User:
@@ -112,11 +112,9 @@ def appointment():
     name = data.get('name')
     specialization = data.get('specialization')
     time = data.get('time')
-    doctor_id = data.get('doctor_id')  # Извлекаем идентификатор врача из запроса
-
+    doctor_id = data.get('doctor_id')  
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        # Извлекаем имя пользователя и идентификатор пользователя из базы данных
         c.execute('SELECT id, username FROM users WHERE username = ?', (data.get('username'),))
         user = c.fetchone()
         if user is None:
@@ -125,7 +123,7 @@ def appointment():
         else:
             user_id, username = user
 
-        # Извлекаем имя врача из базы данных по его идентификатору
+       
         c.execute('SELECT username FROM users WHERE id = ?', (doctor_id,))
         fetch_result = c.fetchone()
         if fetch_result is None:
@@ -133,12 +131,12 @@ def appointment():
         else:
             doctor = fetch_result[0]
 
-        # Проверяем, не занято ли уже выбранное время
+        
         c.execute('SELECT * FROM appointments WHERE time = ? AND doctor_id = ?', (time, doctor_id))
         if c.fetchone() is not None:
-            return '', 204  # Возвращаем код статуса 204 без сообщения, если время уже занято
+            return '', 204  
 
-        c.execute('INSERT INTO appointments (name, specialization, time, doctor, username, id, doctor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', (name, specialization, time, doctor, username, user_id, doctor_id))  # добавляем статус "booked" при создании талона
+        c.execute('INSERT INTO appointments (name, specialization, time, doctor, username, id, doctor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', (name, specialization, time, doctor, username, user_id, doctor_id))
         conn.commit()
 
     return jsonify({'message': 'Талон создан! Не забудьте прийти в указанное время к указанному врачу.'}), 200
@@ -151,15 +149,15 @@ def view_appointments():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        # Извлекаем идентификатор врача из базы данных
+        
         c.execute('SELECT id FROM users WHERE username = ?', (username,))
         doctor_id = c.fetchone()[0]
 
-        # Извлекаем записи на прием для данного врача
+       
         c.execute('SELECT * FROM appointments WHERE doctor_id = ?', (doctor_id,))
         appointments = c.fetchall()
 
-    # Формируем список записей на прием
+    
     appointments_list = [{'id': appointment[5], 'name': appointment[0], 'specialization': appointment[1], 'time': appointment[2]} for appointment in appointments]
 
     return jsonify({'appointments': appointments_list}), 200
@@ -171,7 +169,7 @@ def finish_appointment():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        # Удаляем запись на прием
+        
         c.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
         conn.commit()
 
