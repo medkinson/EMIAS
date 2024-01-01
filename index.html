@@ -343,10 +343,10 @@ $(document).ready(function() {
 
 
        $('#submitAppointment').click(function() {
-    var selectedTime = $('#time').val();  // Get the selected time
-    var selectedDoctor = $('#doctor').val();  // Get the selected doctor
+    var selectedTime = $('#time').val();  
+    var selectedDoctor = $('#doctor').val();  
     var name = $('#name').val();  // Get the name
-    var specialization = $('#specialization').val();  // Get the specialization
+    var specialization = $('#specialization').val();  
 
     // Проверяем, вошел ли пользователь в систему
     var usernameDisplay = $('#usernameDisplay').text();
@@ -355,7 +355,7 @@ $(document).ready(function() {
     // Если пользователь вошел в систему, извлекаем его имя пользователя
     var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
     
-    // Make the POST request to the server
+    // делаем ПОСТ запрос
     $.ajax({
         url: '/appointment',
         type: 'POST',
@@ -368,9 +368,9 @@ $(document).ready(function() {
         }),
         success: function(response) {
             alert(response.message);
-            // Remove the selected time from the list
+            
             $('#time option:selected').remove();
-            // Add the selected time to the list of booked times for the selected doctor
+            
             bookedTimes[selectedDoctor].push(selectedTime);
         },
         error: function(response) {
