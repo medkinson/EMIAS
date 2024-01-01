@@ -174,7 +174,6 @@ $('#specialization').change(function() {
     var doctorSelect = $('#doctor');
     doctorSelect.empty();
     doctors[specialization].forEach(function(doctor) {
-        // Теперь добавляем только имя врача
         doctorSelect.append($('<option></option>').val(doctor.id).text(doctor.name));
     });
 });
@@ -224,7 +223,7 @@ $('#specialization').change(function() {
     });
 });
 
-// Проверяем, есть ли куки при загрузке страницы
+
 $(document).ready(function() {
     var username = $.cookie('username');
     if (username) {
@@ -274,11 +273,11 @@ $(document).ready(function() {
 });
 
             $('#viewRecordsButton').click(function() {
-    // Проверяем, вошел ли пользователь в систему
+    
     var usernameDisplay = $('#usernameDisplay').text();
     var isLoggedIn = usernameDisplay && usernameDisplay.includes('Вход выполнен');
     
-    // Если пользователь вошел в систему, извлекаем его имя пользователя
+    
     var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
     
     $.ajax({
@@ -289,19 +288,19 @@ $(document).ready(function() {
             username: username
         }),
         success: function(response) {
-            // Очищаем контейнер записей
+            
             $('#appointmentsContainer').empty();
 
-            // Создаем объект, который связывает кодовые обозначения специализаций и буквенные названия
+            
             var specializationNames = {
                 'urology': 'Урология',
                 'moleMedicine': 'Кротовая медицина',
                 'bearMedicine': 'Медвежья медицина'
             };
 
-            // Добавляем каждую запись на прием в контейнер
+            
             response.appointments.forEach(function(appointment) {
-                // Используем объект specializationNames для получения буквенного названия специализации
+                
                 var specializationName = specializationNames[appointment.specialization];
                 var appointmentElement = $('<div></div>').text(`Имя: ${appointment.name}, Специализация: ${specializationName}, Время: ${appointment.time}`);
                 var finishButton = $('<button>Завершить прием</button>').click(function() {
@@ -327,12 +326,12 @@ $(document).ready(function() {
 
 	    $("#appointmentForm").submit(function(event) {
 		event.preventDefault();
-		var name = $("#name").val(); // Получаем имя из формы записи на прием
+		var name = $("#name").val(); 
 		$.ajax({
-		    url: '/register_appointment', // URL, куда отправляется запрос
+		    url: '/register_appointment', 
 		    type: 'post',
 		    data: {
-		        name: name // Отправляем имя вместе с запросом
+		        name: name 
 		    },
 		    success: function(response) {
 		        alert(response.message);
@@ -348,14 +347,14 @@ $(document).ready(function() {
     var name = $('#name').val();  // Get the name
     var specialization = $('#specialization').val();  
 
-    // Проверяем, вошел ли пользователь в систему
+    
     var usernameDisplay = $('#usernameDisplay').text();
     var isLoggedIn = usernameDisplay && usernameDisplay.includes('Вход выполнен');
     
-    // Если пользователь вошел в систему, извлекаем его имя пользователя
+    
     var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
     
-    // делаем ПОСТ запрос
+    
     $.ajax({
         url: '/appointment',
         type: 'POST',
