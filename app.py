@@ -8,14 +8,14 @@ import os
 app = Flask(__name__, static_folder='/var/www/mishland.ru')
 login_manager = LoginManager()
 login_manager.init_app(app)
-app.secret_key = 'think_a_little'
+app.secret_key = 'bomb'
 
 
 def create_table():
     with sqlite3.connect('database.db') as conn:
        c = conn.cursor()
        c.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, account_type TEXT CHECK(account_type IN ("ВРАЧ", "ПАЦИЕНТ")));')
-       c.execute('CREATE TABLE IF NOT EXISTS appointments (name TEXT, specialization TEXT, time TEXT, doctor TEXT, username TEXT DEFAULT "NA", id INTEGER, doctor_id INTEGER, FOREIGN KEY(id) REFERENCES users(id), FOREIGN KEY(doctor_id) REFERENCES users(id))')  
+       c.execute('CREATE TABLE IF NOT EXISTS appointments (name TEXT, specialization TEXT, time TEXT, doctor TEXT, username TEXT DEFAULT "NA", id INTEGER, doctor_id INTEGER, FOREIGN KEY(id) REFERENCES users(id), FOREIGN KEY(doctor_id) REFERENCES users(id))')  # добавлен столбец status
 
 
 class User:
@@ -25,22 +25,22 @@ class User:
         self.password_hash = password_hash
         self.account_type = account_type
 
-    
+    # Flask-Login требует этих четырех методов
 
     def is_authenticated(self):
-        
+        # Предполагается, что пользователь всегда аутентифицирован
         return True
 
     def is_active(self):
-     
+        # Предполагается, что пользователь всегда активен
         return True
 
     def is_anonymous(self):
-        
+        # Реальные пользователи не являются анонимными
         return False
 
     def get_id(self):
-        
+        # Возвращает уникальный идентификатор пользователя в виде строки (в данном случае - это id)
         return str(self.id)
 
 
@@ -112,9 +112,11 @@ def appointment():
     name = data.get('name')
     specialization = data.get('specialization')
     time = data.get('time')
-    doctor_id = data.get('doctor_id')  
+    doctor_id = data.get('doctor_id')  # Извлекаем идентификатор врача из запроса
+
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
+        # Извлекаем имя пользователя и идентификатор пользователя из базы данных
         c.execute('SELECT id, username FROM users WHERE username = ?', (data.get('username'),))
         user = c.fetchone()
         if user is None:
@@ -123,7 +125,7 @@ def appointment():
         else:
             user_id, username = user
 
-       
+        # Извлекаем имя врача из базы данных по его идентификатору
         c.execute('SELECT username FROM users WHERE id = ?', (doctor_id,))
         fetch_result = c.fetchone()
         if fetch_result is None:
@@ -131,12 +133,12 @@ def appointment():
         else:
             doctor = fetch_result[0]
 
-        
+        # Проверяем, не занято ли уже выбранное время
         c.execute('SELECT * FROM appointments WHERE time = ? AND doctor_id = ?', (time, doctor_id))
         if c.fetchone() is not None:
-            return '', 204  
+            return '', 204  # Возвращаем код статуса 204 без сообщения, если время уже занято
 
-        c.execute('INSERT INTO appointments (name, specialization, time, doctor, username, id, doctor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', (name, specialization, time, doctor, username, user_id, doctor_id))
+        c.execute('INSERT INTO appointments (name, specialization, time, doctor, username, id, doctor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', (name, specialization, time, doctor, username, user_id, doctor_id))  # добавляем статус "booked" при создании талона
         conn.commit()
 
     return jsonify({'message': 'Талон создан! Не забудьте прийти в указанное время к указанному врачу.'}), 200
@@ -149,15 +151,15 @@ def view_appointments():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        
+        # Извлекаем идентификатор врача из базы данных
         c.execute('SELECT id FROM users WHERE username = ?', (username,))
         doctor_id = c.fetchone()[0]
 
-       
+        # Извлекаем записи на прием для данного врача
         c.execute('SELECT * FROM appointments WHERE doctor_id = ?', (doctor_id,))
         appointments = c.fetchall()
 
-    
+    # Формируем список записей на прием
     appointments_list = [{'id': appointment[5], 'name': appointment[0], 'specialization': appointment[1], 'time': appointment[2]} for appointment in appointments]
 
     return jsonify({'appointments': appointments_list}), 200
@@ -169,7 +171,7 @@ def finish_appointment():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        
+        # Удаляем запись на прием
         c.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
         conn.commit()
 
@@ -200,14 +202,13 @@ def register_appointment():
 
     return jsonify({'message': 'Талон создан! Не забудьте прийти в указанное время.'}), 200
 
-@app.route('/bookedTimes/<doctor_id>', methods=['GET'])
-def get_booked_times(doctor_id):
+@app.route('/bookedTimes/<doctor_id>/<specialization>', methods=['GET'])
+def get_booked_times(doctor_id, specialization):
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        c.execute('SELECT time FROM appointments WHERE doctor_id = ?', (doctor_id,))
+        c.execute('SELECT time FROM appointments WHERE doctor_id = ? AND specialization = ?', (doctor_id, specialization))
         booked_times = [row[0] for row in c.fetchall()]
     return jsonify(booked_times), 200
-
 
 @app.route('/get_appointments', methods=['GET'])
 def get_appointments():
@@ -223,5 +224,5 @@ def get_appointments():
 
 if __name__ == '__main__':
     create_table()
-    app.run(host="0.0.0.0", debug = False)
+    app.run(host="0.0.0.0", debug = True)
 
