@@ -1,4 +1,6 @@
 import sqlite3
+import datetime
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template, session, make_response, redirect, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_required, current_user, LoginManager, login_user
@@ -15,7 +17,7 @@ def create_table():
     with sqlite3.connect('database.db') as conn:
        c = conn.cursor()
        c.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, account_type TEXT CHECK(account_type IN ("ВРАЧ", "ПАЦИЕНТ")));')
-       c.execute('CREATE TABLE IF NOT EXISTS appointments (name TEXT, specialization TEXT, time TEXT, doctor TEXT, username TEXT DEFAULT "NA", id INTEGER, doctor_id INTEGER, FOREIGN KEY(id) REFERENCES users(id), FOREIGN KEY(doctor_id) REFERENCES users(id))')  # добавлен столбец status
+       c.execute('CREATE TABLE IF NOT EXISTS appointments (name TEXT, specialization TEXT, date TEXT, time TEXT, doctor TEXT, username TEXT DEFAULT "NA", id INTEGER, doctor_id INTEGER, FOREIGN KEY(id) REFERENCES users(id), FOREIGN KEY(doctor_id) REFERENCES users(id))')  # добавлен столбец status
 
 
 class User:
@@ -106,17 +108,24 @@ def get_user_info():
             user_id, username = user
             return jsonify({'username': username, 'id': id})
 
+
 @app.route('/appointment', methods=['POST'])
 def appointment():
     data = request.get_json()
     name = data.get('name')
     specialization = data.get('specialization')
+    date_str = data.get('date')
     time = data.get('time')
-    doctor_id = data.get('doctor_id')  # Извлекаем идентификатор врача из запроса
+    doctor_id = data.get('doctor_id')
+
+    # Validate the date format
+    #try:
+        #date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    #except ValueError:
+        #return jsonify({'message': 'Invalid date format. Expected format: YYYY-MM-DD'}), 400
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        # Извлекаем имя пользователя и идентификатор пользователя из базы данных
         c.execute('SELECT id, username FROM users WHERE username = ?', (data.get('username'),))
         user = c.fetchone()
         if user is None:
@@ -125,7 +134,6 @@ def appointment():
         else:
             user_id, username = user
 
-        # Извлекаем имя врача из базы данных по его идентификатору
         c.execute('SELECT username FROM users WHERE id = ?', (doctor_id,))
         fetch_result = c.fetchone()
         if fetch_result is None:
@@ -133,15 +141,15 @@ def appointment():
         else:
             doctor = fetch_result[0]
 
-        # Проверяем, не занято ли уже выбранное время
-        c.execute('SELECT * FROM appointments WHERE time = ? AND doctor_id = ?', (time, doctor_id))
+        c.execute('SELECT * FROM appointments WHERE date = ? AND time = ? AND doctor_id = ? AND specialization = ?', (date_str, time, doctor_id, specialization))
         if c.fetchone() is not None:
-            return '', 204  # Возвращаем код статуса 204 без сообщения, если время уже занято
+            return '', 204
 
-        c.execute('INSERT INTO appointments (name, specialization, time, doctor, username, id, doctor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', (name, specialization, time, doctor, username, user_id, doctor_id))  # добавляем статус "booked" при создании талона
+        c.execute('INSERT INTO appointments (name, specialization, date, time, doctor, username, id, doctor_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (name, specialization, date_str, time, doctor, username, user_id, doctor_id))
         conn.commit()
 
     return jsonify({'message': 'Талон создан! Не забудьте прийти в указанное время к указанному врачу.'}), 200
+
 
 
 @app.route('/view_appointments', methods=['POST'])
@@ -151,6 +159,7 @@ def view_appointments():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
+        
         # Извлекаем идентификатор врача из базы данных
         c.execute('SELECT id FROM users WHERE username = ?', (username,))
         doctor_id = c.fetchone()[0]
@@ -160,7 +169,7 @@ def view_appointments():
         appointments = c.fetchall()
 
     # Формируем список записей на прием
-    appointments_list = [{'id': appointment[5], 'name': appointment[0], 'specialization': appointment[1], 'time': appointment[2]} for appointment in appointments]
+    appointments_list = [{'id': appointment[5], 'name': appointment[0], 'specialization': appointment[1], 'date': appointment[2], 'time': appointment[3]} for appointment in appointments]
 
     return jsonify({'appointments': appointments_list}), 200
 

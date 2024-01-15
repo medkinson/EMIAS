@@ -128,6 +128,12 @@
                         <option value="bearMedicine">Медвежья медицина</option>
                     </select>
                 </li>
+                <li>Выберите дату
+    		    <select id="date">
+        		<!-- Даты будут добавлены динамически -->
+    		    </select>
+	        </li>
+
                 <li>Выберите время
                     <select id="time">
                         <!-- Время будет добавлено динамически -->
@@ -162,61 +168,122 @@ var specializationNames = {
     'bearMedicine': 'Медвежья медицина'
 };
 
-var bookedTimes = {
-    '1': [],
-    '2': [],
-    '3': []
-};
+function getCurrentDate() {
+    var today = new Date();
+    return today;
+}
+
+function renderDates() {
+    var dateSelect = $('#date');
+    dateSelect.empty();
+
+    var currentDate = getCurrentDate();
+
+    for (var i = 0; i < 7; i++) {
+        var date = new Date(currentDate);
+        date.setDate(currentDate.getDate() + i);
+
+        var formattedDate = formatDate(date);
+        dateSelect.append($('<option></option>').val(formattedDate).text(formattedDate));
+    }
+}
+
+function formatDate(date) {
+    var year = date.getFullYear();
+    var month = (date.getMonth() + 1).toString().padStart(2, '0'); // Month is zero-based
+    var day = date.getDate().toString().padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
 
 function populateDoctors(specialization) {
-        var doctorSelect = $('#doctor');
-        doctorSelect.empty();
-        doctors[specialization].forEach(function(doctor) {
-            doctorSelect.append($('<option></option>').val(doctor.id).text(doctor.name));
-        });
+    var doctorSelect = $('#doctor');
+    doctorSelect.empty();
 
-        // Trigger the change event on the doctorSelect to update the timeSelect
-        doctorSelect.trigger('change');
-    }
-
-$('#specialization').change(function() {
-        var specialization = $(this).val();
-        populateDoctors(specialization);
+    doctors[specialization].forEach(function(doctor) {
+        doctorSelect.append($('<option></option>').val(doctor.id).text(doctor.name));
     });
 
+    // Trigger the change event on the doctorSelect to update the timeSelect
+    doctorSelect.trigger('change');
 
-$('#doctor').change(function() {
-    var doctorId = $(this).val();  // Теперь идентификатор врача берется прямо из значения выбранного элемента
-    var selectedSpecialization = $('#specialization').val();
+    // Render 7 days starting from today
+    renderDates();
+}
 
-    // Проверка наличия занятых временных слотов для выбранного врача и специальности
+$('#specialization').change(function() {
+    var specialization = $(this).val();
+    populateDoctors(specialization);
+});
+
+
+
+function getBookedTimes(doctorId, specialization, callback) {
     $.ajax({
-        url: '/bookedTimes/' + doctorId + '/' + selectedSpecialization,
+        url: '/bookedTimes/' + doctorId + '/' + specialization,
         method: 'GET',
         success: function(bookedTimes) {
-            // Получаем выбранного врача по идентификатору
-            var doctor = doctors[selectedSpecialization].find(d => d.id == doctorId);
-
-            if (doctor) {
-                var doctorTimes = doctor.schedule;
-
-                // Используем айди врача (который теперь берется из переменной) для фильтрации времен
-                var availableTimes = doctorTimes.filter(function(time) {
-                    return !bookedTimes.some(bookedTimes => bookedTimes.doctorId === doctorId && bookedTimes.time === time);
-                });
-
-                updateAvailableTimes(availableTimes);
-            } else {
-                console.error('Doctor not found with id:', doctorId, 'and specialization:', selectedSpecialization);
-            }
+            callback(bookedTimes); // Вызываем колбэк после получения данных
         },
         error: function(jqXHR, textStatus, errorThrown) {
             console.error('Error fetching booked times:', textStatus, errorThrown);
         }
     });
+}
+
+
+$('#doctor').change(function() {
+    var doctorId = $(this).val();
+    var selectedSpecialization = $('#specialization').val();
+
+    // Получаем выбранного врача по идентификатору
+    var doctor = doctors[selectedSpecialization].find(d => d.id == doctorId);
+
+    if (doctor) {
+        var doctorTimes = doctor.schedule;
+
+        // Получаем информацию о занятых временных слотах и обновляем UI в колбэке
+        getBookedTimes(doctorId, selectedSpecialization, function(bookedTimes) {
+            // Лог перед фильтрацией
+            console.log('Before filtering doctorTimes:', doctorTimes);
+            console.log('Booked Times:', bookedTimes);
+
+            // Удаляем занятые временные слоты из доступных
+            doctorTimes = doctorTimes.filter(time => !bookedTimes.includes(time.trim()));
+
+            // Лог после фильтрации
+            console.log('After filtering doctorTimes:', doctorTimes);
+
+            // Обновляем доступные временные слоты
+            updateAvailableTimes(doctorTimes);
+
+            // Update the UI when a time slot is booked
+            updateBookedTimesUI(bookedTimes);
+        });
+    } else {
+        console.error('Doctor not found with id:', doctorId, 'and specialization:', selectedSpecialization);
+    }
 });
 
+function updateBookedTimesUI(bookedTimes) {
+    console.log('Updating UI with booked times:', bookedTimes);
+
+    bookedTimes.forEach(function(bookedTime) {
+        // Assuming each booked time has a corresponding element with class 'booked-time'
+        var element = $('.booked-time[data-time="' + bookedTime.trim() + '"]');
+        
+        // Log the element to check if it's selected correctly
+        console.log('Selected Element:', element);
+
+        // Hide the selected element
+        element.hide();
+    });
+}
+
+
+
 function updateAvailableTimes(availableTimes) {
+    console.log('Updating available times:', availableTimes); // Добавляем лог для отладки
     var timeSelect = $('#time');
     timeSelect.empty();
 
@@ -224,6 +291,7 @@ function updateAvailableTimes(availableTimes) {
         timeSelect.append($('<option></option>').val(time).text(time));
     });
 }
+
 
     // Populate doctors initially
     var initialSpecialization = $('#specialization').val();
@@ -272,14 +340,14 @@ function updateAvailableTimes(availableTimes) {
 });
 
 // Проверяем, есть ли куки при загрузке страницы
-$(document).ready(function() {
-    var username = $.cookie('username');
-    if (username) {
-        $('#loginButton').hide();
-        $('#registerButton').hide();
-        $('#usernameDisplay').text('Вход выполнен | ' + username);
-    }
-});
+// $(document).ready(function() {
+    // var username = $.cookie('username');
+   // if (username) {
+      //  $('#loginButton').hide();
+      //  $('#registerButton').hide();
+      //  $('#usernameDisplay').text('Вход выполнен | ' + username);
+  //  }
+//});
 
        $('#registerButton').click(function() {
     var username = prompt("Введите ваше имя пользователя:");
@@ -329,47 +397,47 @@ $(document).ready(function() {
     var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
     
     $.ajax({
-        url: '/view_appointments',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            username: username
-        }),
-        success: function(response) {
-            // Очищаем контейнер записей
-            $('#appointmentsContainer').empty();
+    url: '/view_appointments',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+        username: username
+    }),
+    success: function(response) {
+        // Очищаем контейнер записей
+        $('#appointmentsContainer').empty();
 
-            // Создаем объект, который связывает кодовые обозначения специализаций и буквенные названия
-            var specializationNames = {
-                'urology': 'Урология',
-                'moleMedicine': 'Кротовая медицина',
-                'bearMedicine': 'Медвежья медицина'
-            };
+        // Создаем объект, который связывает кодовые обозначения специализаций и буквенные названия
+        var specializationNames = {
+            'urology': 'Урология',
+            'moleMedicine': 'Кротовая медицина',
+            'bearMedicine': 'Медвежья медицина'
+        };
 
-            // Добавляем каждую запись на прием в контейнер
-            response.appointments.forEach(function(appointment) {
-                // Используем объект specializationNames для получения буквенного названия специализации
-                var specializationName = specializationNames[appointment.specialization];
-                var appointmentElement = $('<div></div>').text(`Имя: ${appointment.name}, Специализация: ${specializationName}, Время: ${appointment.time}`);
-                var finishButton = $('<button>Завершить прием</button>').click(function() {
-                    $.ajax({
-                        url: '/finish_appointment',
-                        method: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({
-                            appointment_id: appointment.id
-                        }),
-                        success: function(response) {
-                            alert(response.message);
-                            appointmentElement.remove();
-                        }
-                    });
+        // Добавляем каждую запись на прием в контейнер
+        response.appointments.forEach(function(appointment) {
+            // Используем объект specializationNames для получения буквенного названия специализации
+            var specializationName = specializationNames[appointment.specialization];
+            var appointmentElement = $('<div></div>').text(`Имя: ${appointment.name}, Специализация: ${specializationName}, Дата: ${appointment.date}, Время: ${appointment.time}`);
+            var finishButton = $('<button>Завершить прием</button>').click(function() {
+                $.ajax({
+                    url: '/finish_appointment',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        appointment_id: appointment.id
+                    }),
+                    success: function(response) {
+                        alert(response.message);
+                        appointmentElement.remove();
+                    }
                 });
-                appointmentElement.append(finishButton);
-                $('#appointmentsContainer').append(appointmentElement);
             });
-        }
-    });
+            appointmentElement.append(finishButton);
+            $('#appointmentsContainer').append(appointmentElement);
+        });
+    }
+});
 });
 
 	    $("#appointmentForm").submit(function(event) {
@@ -390,10 +458,11 @@ $(document).ready(function() {
 
 
        $('#submitAppointment').click(function() {
-    var selectedTime = $('#time').val();  // Get the selected time
-    var selectedDoctor = $('#doctor').val();  // Get the selected doctor
-    var name = $('#name').val();  // Get the name
-    var specialization = $('#specialization').val();  // Get the specialization
+    var selectedDate = $('#date').val();  // Получаем выбранную дату
+    var selectedTime = $('#time').val();  // Получаем выбранное время
+    var selectedDoctor = $('#doctor').val();  // Получаем выбранного врача
+    var name = $('#name').val();  // Получаем имя
+    var specialization = $('#specialization').val();  // Получаем специализацию
 
     // Проверяем, вошел ли пользователь в систему
     var usernameDisplay = $('#usernameDisplay').text();
@@ -401,32 +470,38 @@ $(document).ready(function() {
     
     // Если пользователь вошел в систему, извлекаем его имя пользователя
     var username = isLoggedIn ? usernameDisplay.split('|')[1].trim() : 'MD';
+
+    // Проверяем, было ли выбрано время перед отправкой POST-запроса
+    if (!selectedTime) {
+        alert('Пожалуйста, выберите доступное время перед записью на прием.');
+        return;
+    }
     
-    // Make the POST request to the server
+    // Выполняем POST-запрос к серверу
     $.ajax({
         url: '/appointment',
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({
-            'name': name,
-            'specialization': specialization,
-            'time': selectedTime,
-            'doctor_id': selectedDoctor
-        }),
+    'name': name,
+    'specialization': specialization,
+    'date': selectedDate,  // Добавляем дату в данные запроса
+    'time': selectedTime,
+    'doctor_id': selectedDoctor
+	}),
+
         success: function(response) {
             alert(response.message);
-            // Remove the selected time from the list
+            // Удаляем выбранное время из списка
             $('#time option:selected').remove();
-            // Add the selected time to the list of booked times for the selected doctor
-            bookedTimes[selectedDoctor].push(selectedTime);
+            // Добавляем выбранное время в список занятых временных слотов для выбранного врача
+            // bookedTimes[selectedDoctor].push(selectedTime);
         },
         error: function(response) {
             alert(response.responseJSON.message);
         }
     });
-
-
-   });
+});
    </script>
 
 </body>
