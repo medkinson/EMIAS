@@ -27,22 +27,17 @@ class User:
         self.password_hash = password_hash
         self.account_type = account_type
 
-    # Flask-Login требует этих четырех методов
 
     def is_authenticated(self):
-        # Предполагается, что пользователь всегда аутентифицирован
         return True
 
     def is_active(self):
-        # Предполагается, что пользователь всегда активен
         return True
 
     def is_anonymous(self):
-        # Реальные пользователи не являются анонимными
         return False
 
     def get_id(self):
-        # Возвращает уникальный идентификатор пользователя в виде строки (в данном случае - это id)
         return str(self.id)
 
 
@@ -118,11 +113,6 @@ def appointment():
     time = data.get('time')
     doctor_id = data.get('doctor_id')
 
-    # Validate the date format
-    #try:
-        #date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    #except ValueError:
-        #return jsonify({'message': 'Invalid date format. Expected format: YYYY-MM-DD'}), 400
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
@@ -160,15 +150,12 @@ def view_appointments():
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
         
-        # Извлекаем идентификатор врача из базы данных
         c.execute('SELECT id FROM users WHERE username = ?', (username,))
         doctor_id = c.fetchone()[0]
 
-        # Извлекаем записи на прием для данного врача
         c.execute('SELECT * FROM appointments WHERE doctor_id = ?', (doctor_id,))
         appointments = c.fetchall()
 
-    # Формируем список записей на прием
     appointments_list = [{'id': appointment[5], 'name': appointment[0], 'specialization': appointment[1], 'date': appointment[2], 'time': appointment[3]} for appointment in appointments]
 
     return jsonify({'appointments': appointments_list}), 200
@@ -180,7 +167,6 @@ def finish_appointment():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        # Удаляем запись на прием
         c.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
         conn.commit()
 
